@@ -1,3 +1,5 @@
+package com.sk.downloadimage.utils;
+
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.TimeInterval;
 import cn.hutool.core.io.FileUtil;
@@ -10,14 +12,12 @@ import cn.hutool.core.util.ReUtil;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import com.sk.downloadimage.base.Constants;
+import com.sk.downloadimage.bean.ComicBean;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -182,7 +182,7 @@ public class DownloadUtils {
             imageSrc = document.select("img.current-img").attr("src");
             ext = imageSrc.substring(imageSrc.lastIndexOf(".") + 1);
             for (int i = 1; i <= count; i++) {
-//                File tmp = new File(Constants.DownloadPath+comicBean.getComicName()+File.separator+(i + "." + ext));
+//                File tmp = new File(com.sk.downloadimage.base.Constants.DownloadPath+comicBean.getComicName()+File.separator+(i + "." + ext));
 //                if (!tmp.exists()){
 //                    tmp.createNewFile();
 //                }

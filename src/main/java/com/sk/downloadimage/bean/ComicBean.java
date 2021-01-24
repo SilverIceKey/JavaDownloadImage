@@ -1,3 +1,5 @@
+package com.sk.downloadimage.bean;
+
 import java.util.List;
 
 public class ComicBean {
