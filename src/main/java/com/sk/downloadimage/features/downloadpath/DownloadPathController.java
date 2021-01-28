@@ -2,6 +2,10 @@ package com.sk.downloadimage.features.downloadpath;
 
 import cn.hutool.core.util.StrUtil;
 import com.sk.downloadimage.base.BaseController;
+import com.sk.downloadimage.base.Constants;
+import com.sk.downloadimage.features.downloadfile.DownloadFileController;
+
+import java.io.File;
 
 public class DownloadPathController extends BaseController {
     @Override
@@ -13,10 +17,11 @@ public class DownloadPathController extends BaseController {
 
     @Override
     protected void HandleEvent(String input) {
-        if ("0".equals(input)){
+        if ("0".equals(input)) {
             back();
-        }else {
-
+        } else {
+            Constants.DownloadPath = input.endsWith(File.separator) ? input : input + File.separator;
+            startController(new DownloadFileController());
         }
     }
 }

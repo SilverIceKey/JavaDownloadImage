@@ -50,4 +50,7 @@ public abstract class BaseController {
     protected void back() {
         ControllerManager.getInstance().removeController();
     }
+    protected void backToTop(){
+        ControllerManager.getInstance().removeController();
+    }
 }

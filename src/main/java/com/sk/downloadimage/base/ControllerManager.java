@@ -18,7 +18,7 @@ public class ControllerManager<T extends BaseController> {
     }
 
     public void addController(T controller) {
-        if (!mControllerStack.empty()){
+        if (!mControllerStack.empty()) {
             mControllerStack.peek().onPause();
         }
         mControllerStack.push(controller);
@@ -30,6 +30,16 @@ public class ControllerManager<T extends BaseController> {
         if (!mControllerStack.empty()) {
             mControllerStack.pop();
             mControllerStack.peek().onResume();
+        }
+    }
+
+    public void removeAllController() {
+        for (int i = mControllerStack.size() - 1; i > 0; i--) {
+            mControllerStack.peek().onDestory();
+            if (!mControllerStack.empty()) {
+                mControllerStack.pop();
+                mControllerStack.peek().onResume();
+            }
         }
     }
 }

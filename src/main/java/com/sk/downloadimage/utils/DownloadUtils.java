@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DownloadUtils {
     private static final Log log = LogFactory.get("下载工具");
 
-    public void startDownload() {
+    public void startDownload(OnDownloadListener listener) {
         GlobalThreadPool.init();
         System.setProperty("https.protocols", "TLSv1,TLSv1.1,TLSv1.2,SSLv3");
         String[] comicUrls = new FileReader(Constants.URLSFile).readString().split("\r\n");
@@ -39,6 +39,10 @@ public class DownloadUtils {
                 continue;
             }
         }
+        if (listener!=null){
+            listener.onDownloadSuccess();
+        }
+        log.info("下载信息:全部下载完成");
     }
 
     private void downloadComic(ComicBean comicBean) {
@@ -230,5 +234,9 @@ public class DownloadUtils {
         title = title.replaceAll("[/\\\\:*?|]", "");
         title = title.replaceAll("[\"<>]", "");
         return title;
+    }
+
+    public interface OnDownloadListener{
+        void onDownloadSuccess();
     }
 }
