@@ -14,6 +14,8 @@ import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import com.sk.downloadimage.base.Constants;
 import com.sk.downloadimage.bean.ComicBean;
+import com.sk.downloadimage.bean.ConfigBean;
+import com.sk.downloadimage.features.main.DownloadListener;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -24,11 +26,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class DownloadUtils {
     private static final Log log = LogFactory.get("下载工具");
-
-    public void startDownload() {
+    private ConfigBean configBean;
+    private DownloadListener downloadListener;
+    public void startDownload(DownloadListener listener) {
+        downloadListener = listener;
+        configBean = ConfigUtils.getConfig();
         GlobalThreadPool.init();
         System.setProperty("https.protocols", "TLSv1,TLSv1.1,TLSv1.2,SSLv3");
-        String[] comicUrls = new FileReader(Constants.URLSFile).readString().split("\r\n");
+        String[] comicUrls = new FileReader(configBean.getUrlsFile()).readString().split("\r\n");
         for (int i = 0; i < comicUrls.length; i++) {
             if (comicUrls[i].startsWith(Constants.ENMiaoHentai)) {
                 comicUrls[i] = comicUrls[i].replace(Constants.ENMiaoHentai, Constants.CNMiaoHentai);
@@ -38,6 +43,9 @@ public class DownloadUtils {
             while (!comicBean.isDownload()) {
                 continue;
             }
+        }
+        if (downloadListener!=null){
+            downloadListener.onDownloadComplete();
         }
     }
 
@@ -52,19 +60,19 @@ public class DownloadUtils {
     private volatile AtomicInteger downloadThreadNum = new AtomicInteger(0);
 
     private void downloadImages(ComicBean comicBean) {
-        if (!FileUtil.exist(Constants.DownloadPath + comicBean.getComicName())) {
-            FileUtil.mkdir(Constants.DownloadPath + comicBean.getComicName());
+        if (!FileUtil.exist(configBean.getDownloadPath() + comicBean.getComicName())) {
+            FileUtil.mkdir(configBean.getDownloadPath() + comicBean.getComicName());
         }
         for (int i = 0; i < comicBean.getComicPageUrl().size(); i++) {
             String downloadUrl = comicBean.getComicPageUrl().get(i);
             String fileName = comicBean.getComicPageUrl().get(i).substring(comicBean.getComicPageUrl().get(i).lastIndexOf("/") + 1);
-            if (FileUtil.exist(Constants.DownloadPath + comicBean.getComicName() + File.separator + fileName) && FileUtil.size(new File(Constants.DownloadPath + comicBean.getComicName() + File.separator + fileName)) != 0) {
+            if (FileUtil.exist(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + fileName) && FileUtil.size(new File(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + fileName)) != 0) {
                 continue;
             }
             ThreadUtil.execute(new Runnable() {
                 @Override
                 public void run() {
-                    if (download(comicBean, downloadUrl, Constants.DownloadPath + comicBean.getComicName(), fileName)) {
+                    if (download(comicBean, downloadUrl, configBean.getDownloadPath() + comicBean.getComicName(), fileName)) {
                         downloadThreadNum.addAndGet(-1);
                     }
                 }
@@ -95,7 +103,7 @@ public class DownloadUtils {
 
                 @Override
                 public void progress(long l) {
-                    log.info("下载中：" + comicBean.getComicName() + String.format(" 总下载进度:%.2f%%",(comicBean.getCurDownloadPage() * 1.0 / comicBean.getComicPage() * 100))+"文件下载("+filename+"):"+FileUtil.readableFileSize(l));
+//                    log.info("下载中：" + comicBean.getComicName() + String.format(" 总下载进度:%.2f%%",(comicBean.getCurDownloadPage() * 1.0 / comicBean.getComicPage() * 100))+"文件下载("+filename+"):"+FileUtil.readableFileSize(l));
                 }
 
                 @Override
@@ -165,7 +173,7 @@ public class DownloadUtils {
 
     private int getCurrentDownloadPages(String comicName) {
         int curDownloadPages = 0;
-        String filePath = Constants.DownloadPath + comicName;
+        String filePath = configBean.getDownloadPath() + comicName;
         if (FileUtil.exist(filePath)) {
             curDownloadPages = FileUtil.ls(filePath).length;
         }
@@ -182,7 +190,7 @@ public class DownloadUtils {
             imageSrc = document.select("img.current-img").attr("src");
             ext = imageSrc.substring(imageSrc.lastIndexOf(".") + 1);
             for (int i = 1; i <= count; i++) {
-//                File tmp = new File(com.sk.downloadimage.base.Constants.DownloadPath+comicBean.getComicName()+File.separator+(i + "." + ext));
+//                File tmp = new File(com.sk.downloadimage.base.configBean.getDownloadPath()+comicBean.getComicName()+File.separator+(i + "." + ext));
 //                if (!tmp.exists()){
 //                    tmp.createNewFile();
 //                }
@@ -194,7 +202,7 @@ public class DownloadUtils {
             imageSrc = srcDocument.select("section.image-container > a > img").attr("src");
             ext = imageSrc.substring(imageSrc.lastIndexOf(".") + 1);
             for (int i = 1; i <= count; i++) {
-                File tmp = new File(Constants.DownloadPath + comicBean.getComicName() + File.separator + (i + "." + ext));
+                File tmp = new File(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + (i + "." + ext));
                 if (!tmp.exists()) {
                     tmp.createNewFile();
                 }
