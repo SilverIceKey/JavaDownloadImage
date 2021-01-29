@@ -4,7 +4,8 @@
 # Log file
 *.log
 target/
-
+config.txt
+DownloadImage.iml
 # BlueJ files
 *.ctxt
 
