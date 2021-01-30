@@ -38,6 +38,9 @@ public abstract class BaseController {
                 System.out.println("请重新输入");
                 initView();
             } else {
+                if (in.startsWith("\"")) {
+                    in = in.substring(1, in.length() - 1);
+                }
                 HandleEvent(in);
             }
         }
