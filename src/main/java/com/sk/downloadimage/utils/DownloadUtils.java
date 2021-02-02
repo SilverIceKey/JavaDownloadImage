@@ -9,17 +9,20 @@ import cn.hutool.core.thread.GlobalThreadPool;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.thread.lock.LockUtil;
 import cn.hutool.core.util.ReUtil;
-import cn.hutool.http.HttpUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import com.sk.downloadimage.base.Constants;
 import com.sk.downloadimage.bean.ComicBean;
 import com.sk.downloadimage.bean.ConfigBean;
 import com.sk.downloadimage.features.main.DownloadListener;
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,6 +31,7 @@ public class DownloadUtils {
     private static final Log log = LogFactory.get("下载工具");
     private ConfigBean configBean;
     private DownloadListener downloadListener;
+
     public void startDownload(DownloadListener listener) {
         downloadListener = listener;
         configBean = ConfigUtils.getConfig();
@@ -44,7 +48,7 @@ public class DownloadUtils {
                 continue;
             }
         }
-        if (downloadListener!=null){
+        if (downloadListener != null) {
             downloadListener.onDownloadComplete();
         }
     }
@@ -95,7 +99,7 @@ public class DownloadUtils {
     public boolean download(ComicBean comicBean, String urlString, String filePath, String filename) {
         try {
             String finalUrlString = urlString;
-            HttpUtil.downloadFile(urlString, new File(filePath + File.separator + filename), new StreamProgress() {
+            HttpUtils.downloadFile(urlString, new File(filePath + File.separator + filename), new StreamProgress() {
                 @Override
                 public void start() {
                     log.info("下载信息:链接：" + finalUrlString + " 漫画名称：" + comicBean.getComicName() + " 当前名字：" + filename);
@@ -111,16 +115,16 @@ public class DownloadUtils {
                     LockUtil.getNoLock().lock();
                     comicBean.setCurDownloadPage(comicBean.getCurDownloadPage() + 1);
                     LockUtil.getNoLock().unlock();
-                    log.info("下载完成：" + comicBean.getComicName() + String.format(" 总下载进度:%.2f%%",(comicBean.getCurDownloadPage() * 1.0 / comicBean.getComicPage() * 100)));
+                    log.info("下载完成：" + comicBean.getComicName() + String.format(" 总下载进度:%.2f%%", (comicBean.getCurDownloadPage() * 1.0 / comicBean.getComicPage() * 100)));
                 }
             });
             return true;
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
-            if (urlString.contains("png")){
-                urlString = urlString.replace("png","jpg");
-            }else if (urlString.contains("jpg")){
-                urlString = urlString.replace("jpg","png");
+            if (urlString.contains("png")) {
+                urlString = urlString.replace("png", "jpg");
+            } else if (urlString.contains("jpg")) {
+                urlString = urlString.replace("jpg", "png");
             }
             ThreadUtil.sleep(2000);
             return download(comicBean, urlString, filePath, filename);
@@ -150,7 +154,11 @@ public class DownloadUtils {
             log.info("链接：" + comicUrl + " 解析开始");
             TimeInterval timeInterval = DateUtil.timer();
             ComicBean comicBean = new ComicBean();
-            Document document = Jsoup.connect(comicUrl + "list/1/").get();
+            Connection connection = Jsoup.connect(comicUrl + (comicUrl.contains(Constants.NHentai) ? "/1/" : "list/1/"));
+            if (configBean.isProxyEnable() && comicUrl.contains(Constants.NHentai)) {
+                connection.proxy(HttpUtils.getProxy());
+            }
+            Document document = connection.get();
             comicBean.setComicUrl(comicUrl);
             comicBean.setComicName(getTitle(comicUrl));
             comicBean.setComicPage(getComicPage(comicUrl, document));
@@ -197,15 +205,26 @@ public class DownloadUtils {
                 comicPageUrl.add(imageSrc.replace("1." + ext, i + "." + ext));
             }
         } else {
-            count = Integer.parseInt(document.select("div.thumbs").html());
-            Document srcDocument = Jsoup.connect(comicUrl + "1/").get();
-            imageSrc = srcDocument.select("section.image-container > a > img").attr("src");
+            count = 0;
+            if (document.select("span.num-pages").size() > 0) {
+                count = Integer.parseInt(document.select("span.num-pages").get(0).html());
+            }
+            Connection connection = Jsoup.connect(comicUrl + "1/");
+            if (configBean.isProxyEnable() && comicUrl.contains(Constants.NHentai)) {
+                connection.proxy(HttpUtils.getProxy());
+            }
+            Document srcDocument = connection.get();
+            imageSrc = srcDocument.select("#content>section.fit-both>a>img").attr("src");
             ext = imageSrc.substring(imageSrc.lastIndexOf(".") + 1);
             for (int i = 1; i <= count; i++) {
-                File tmp = new File(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + (i + "." + ext));
-                if (!tmp.exists()) {
-                    tmp.createNewFile();
+//                File tmp = new File(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + (i + "." + ext));
+                File downloadBookPath = new File(configBean.getDownloadPath() + comicBean.getComicName());
+                if (!downloadBookPath.exists()) {
+                    downloadBookPath.mkdirs();
                 }
+//                if (!tmp.exists()) {
+//                    tmp.createNewFile();
+//                }
                 comicPageUrl.add(imageSrc.replace("1." + ext, i + "." + ext));
             }
         }
@@ -217,13 +236,20 @@ public class DownloadUtils {
         if (comicUrl.startsWith(Constants.CNMiaoHentai)) {
             comicPage = Integer.parseInt(document.select("span.num-pages").get(0).html());
         } else {
-            comicPage = Integer.parseInt(document.select("div.thumbs").html());
+            if (document.select("span.num-pages").size() > 0) {
+                comicPage = Integer.parseInt(document.select("span.num-pages").get(0).html());
+            }
+
         }
         return comicPage;
     }
 
     private String getTitle(String url) throws IOException {
-        Document document = Jsoup.connect(url).get();
+        Connection connection = Jsoup.connect(url);
+        if (configBean.isProxyEnable() && url.contains(Constants.NHentai)) {
+            connection.proxy(HttpUtils.getProxy());
+        }
+        Document document = connection.get();
         String title;
         if (url.startsWith(Constants.CNMiaoHentai)) {
             title = document.select("div#info > h1").html().replace(" - Page 2", "").replace("[中国翻訳]", "").replace("[DL版]", "");
