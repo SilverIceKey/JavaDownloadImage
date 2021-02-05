@@ -32,6 +32,7 @@ public class DownloadUtils {
     private ConfigBean configBean;
     private DownloadListener downloadListener;
 
+    private volatile AtomicInteger downloadBookThreadNum = new AtomicInteger(0);
     public void startDownload(DownloadListener listener) {
         downloadListener = listener;
         configBean = ConfigUtils.getConfig();
@@ -41,8 +42,14 @@ public class DownloadUtils {
         for (int i = 0; i < comicUrls.length; i++) {
             comicUrls[i] = Constants.getURL(comicUrls[i]);
             ComicBean comicBean = checkComicData(comicUrls[i]);
-            downloadComic(comicBean);
-            while (!comicBean.isDownload()) {
+            GlobalThreadPool.submit(new Runnable() {
+                @Override
+                public void run() {
+                    downloadComic(comicBean);
+                }
+            });
+            downloadBookThreadNum.addAndGet(1);
+            while (downloadBookThreadNum.get()>=4) {
                 continue;
             }
         }
@@ -59,7 +66,7 @@ public class DownloadUtils {
         downloadImages(comicBean);
     }
 
-    private volatile AtomicInteger downloadThreadNum = new AtomicInteger(0);
+    private volatile AtomicInteger downloadImageThreadNum = new AtomicInteger(0);
 
     private void downloadImages(ComicBean comicBean) {
         if (!FileUtil.exist(configBean.getDownloadPath() + comicBean.getComicName())) {
@@ -71,19 +78,20 @@ public class DownloadUtils {
             if (FileUtil.exist(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + fileName) && FileUtil.size(new File(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + fileName)) != 0) {
                 continue;
             }
-            ThreadUtil.execute(new Runnable() {
+            GlobalThreadPool.submit(new Runnable() {
                 @Override
                 public void run() {
                     if (download(comicBean, downloadUrl, configBean.getDownloadPath() + comicBean.getComicName(), fileName)) {
-                        downloadThreadNum.addAndGet(-1);
+                        downloadImageThreadNum.addAndGet(-1);
                     }
                 }
             });
-            downloadThreadNum.addAndGet(1);
-            while (downloadThreadNum.get() >= 4) {
+            downloadImageThreadNum.addAndGet(1);
+            while (downloadImageThreadNum.get() >= 7) {
                 continue;
             }
         }
+        downloadBookThreadNum.addAndGet(-1);
     }
 
     /**
