@@ -242,6 +242,7 @@ public class DownloadUtils {
             connection.proxy(HttpUtils.getProxy());
         }
         Document document = connection.get();
+        String author;
         String title;
         if (url.startsWith(Constants.CNMiaoHentai)) {
             title = document.select("div#info > h1").html().replace(" - Page 2", "").replace("[中国翻訳]", "").replace("[DL版]", "");
@@ -250,7 +251,9 @@ public class DownloadUtils {
             title = ReUtil.delAll("\\(COMIC.*号\\)", title).trim();
             log.info("漫画名称：" + title);
         } else {
-            title = document.select("div#info > h2 > span.pretty").html().trim();
+            author = document.select("div#info > h2 > span.before").html().trim();
+            author = ReUtil.delAll("\\([^)]*\\)",author).trim();
+            title = author+document.select("div#info > h2 > span.pretty").html().trim();
             log.info("漫画名称：" + title);
         }
         title = title.replaceAll("[/\\\\:*?|]", "");
