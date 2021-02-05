@@ -1,11 +1,7 @@
 package com.sk.downloadimage.features.main;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.IoUtil;
-import cn.hutool.core.io.file.FileReader;
-import com.alibaba.fastjson.JSONObject;
 import com.sk.downloadimage.base.BaseController;
-import com.sk.downloadimage.base.Constants;
 import com.sk.downloadimage.bean.ConfigBean;
 import com.sk.downloadimage.features.downloadfile.DownloadFileController;
 import com.sk.downloadimage.features.downloadpath.DownloadPathController;
@@ -15,15 +11,15 @@ import com.sk.downloadimage.utils.ConfigUtils;
 import com.sk.downloadimage.utils.DownloadUtils;
 import com.sk.downloadimage.utils.LogUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-
 public class MainController extends BaseController {
-
+    private String BOOT_INF = ".\\BOOT-INF";
+    private String META_INF = ".\\META-INF";
+    private String org = ".\\org";
     @Override
     protected void initView() {
-        LogUtils.info("输出日志");
+        FileUtil.del(BOOT_INF);
+        FileUtil.del(META_INF);
+        FileUtil.del(org);
         ConfigBean configBean = ConfigUtils.getConfig();
         System.out.println("1、设置下载路径 (当前路径:" + configBean.getDownloadPath() + ")");
         System.out.println("2、输入需要下载的文件路径 (当前路径:" + configBean.getUrlsFile() + ")");

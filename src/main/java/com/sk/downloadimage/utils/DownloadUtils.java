@@ -39,9 +39,7 @@ public class DownloadUtils {
         System.setProperty("https.protocols", "TLSv1,TLSv1.1,TLSv1.2,SSLv3");
         String[] comicUrls = new FileReader(configBean.getUrlsFile()).readString().split("\r\n");
         for (int i = 0; i < comicUrls.length; i++) {
-            if (comicUrls[i].startsWith(Constants.ENMiaoHentai)) {
-                comicUrls[i] = comicUrls[i].replace(Constants.ENMiaoHentai, Constants.CNMiaoHentai);
-            }
+            comicUrls[i] = Constants.getURL(comicUrls[i]);
             ComicBean comicBean = checkComicData(comicUrls[i]);
             downloadComic(comicBean);
             while (!comicBean.isDownload()) {
@@ -190,25 +188,15 @@ public class DownloadUtils {
 
     private List<String> getComicPageUrl(ComicBean comicBean, String comicUrl, Document document) throws IOException {
         List<String> comicPageUrl = new ArrayList<>();
-        int count;
         String imageSrc;
         String ext;
         if (comicUrl.startsWith(Constants.CNMiaoHentai)) {
-            count = Integer.parseInt(document.select("span.num-pages").get(0).html());
             imageSrc = document.select("img.current-img").attr("src");
             ext = imageSrc.substring(imageSrc.lastIndexOf(".") + 1);
-            for (int i = 1; i <= count; i++) {
-//                File tmp = new File(com.sk.downloadimage.base.configBean.getDownloadPath()+comicBean.getComicName()+File.separator+(i + "." + ext));
-//                if (!tmp.exists()){
-//                    tmp.createNewFile();
-//                }
+            for (int i = 1; i <= comicBean.getComicPage(); i++) {
                 comicPageUrl.add(imageSrc.replace("1." + ext, i + "." + ext));
             }
         } else {
-            count = 0;
-            if (document.select("span.num-pages").size() > 0) {
-                count = Integer.parseInt(document.select("span.num-pages").get(0).html());
-            }
             Connection connection = Jsoup.connect(comicUrl + "1/");
             if (configBean.isProxyEnable() && comicUrl.contains(Constants.NHentai)) {
                 connection.proxy(HttpUtils.getProxy());
@@ -216,15 +204,11 @@ public class DownloadUtils {
             Document srcDocument = connection.get();
             imageSrc = srcDocument.select("#content>section.fit-both>a>img").attr("src");
             ext = imageSrc.substring(imageSrc.lastIndexOf(".") + 1);
-            for (int i = 1; i <= count; i++) {
-//                File tmp = new File(configBean.getDownloadPath() + comicBean.getComicName() + File.separator + (i + "." + ext));
+            for (int i = 1; i <= comicBean.getComicPage(); i++) {
                 File downloadBookPath = new File(configBean.getDownloadPath() + comicBean.getComicName());
                 if (!downloadBookPath.exists()) {
                     downloadBookPath.mkdirs();
                 }
-//                if (!tmp.exists()) {
-//                    tmp.createNewFile();
-//                }
                 comicPageUrl.add(imageSrc.replace("1." + ext, i + "." + ext));
             }
         }
